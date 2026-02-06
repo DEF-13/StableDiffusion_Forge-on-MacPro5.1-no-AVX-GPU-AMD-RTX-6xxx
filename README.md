@@ -314,3 +314,65 @@ Bien que Forge permette de charger ces modèles, **leur usage est fortement déc
 1. **Goulot d'étranglement PCIe 2.0 :** Le transfert des modèles massifs sur un vieux bus présente des risques d'instabilité.
 2. **Saturation VRAM :** 8 Go sont insuffisants pour ces modèles, forçant un ralentissement extrême.
 3. **Optimisation :** Préférez **SD 1.5** (vitesse) et **SDXL / Pony (Lightning/Turbo)** pour un usage fluide.
+
+** ⚠️ Format de génération :
+* **Pour SD 1.5 :** utliser les dimensions classiques de génération : 512x512px
+* **Pour SDXL/Pony :** ne pas dépasser le 1024x1024px
+* Pour agrandir les images, un bon set-up de l'upscaler de Forge fait des miracles !
+
+---
+
+**🛠️ Dépannage & Maintenance**
+
+**❓ "Illegal Instruction (core dumped)"
+Si cette erreur apparaît, c'est qu'un module (souvent `numpy` ou `torch`) a été mis à jour par erreur vers une version AVX.
+Solution : Refaire l'étape 3 (Le Linkage) pour ré-écraser les fichiers corrompus par les versions compilées No-AVX/No-Cuda.
+
+**❓ Le GPU n'est pas utilisé (Lenteur extrême)
+Si le terminal n'affiche pas `ROCm` au démarrage ou si le benchmark est mauvais :
+* **Vérification :** Taper `rocm-smi` dans ton terminal. Si ta RX 6600 XT n'apparaît pas, c'est un problème de driver au niveau du noyau Ubuntu, pas de Forge.
+* **Rappel :** S'Assurer que la variable `export HSA_OVERRIDE_GFX_VERSION=10.3.0` est bien présente dans le script de lancement.
+
+**🧹 Nettoyage de la VRAM**
+Si Forge plante après une grosse génération, le GPU peut rester "bloqué".
+* Commande rapide : killall -9 python3 (incluse dans notre script de lancement).
+
+---
+
+**📝 Notes de fin**
+
+   * **Architecture :** Conçu spécifiquement pour Mac Pro 5.1 (Dual Xeon Westmere / AMD RDNA 2).
+
+   * **Système :** Ubuntu 22.04/24.04 LTS (Kernel optimisé).
+
+   * **Remerciements :** Merci à la communauté OpenCore Legacy Patcher et aux développeurs de PyTorch le support continu des architectures legacy ainsi qu'à AMD et à Google. Merci à mon épouse et à ma fille de m'avoir laissé menner ce projet à bien.
+
+---
+
+**✍️ Note de fin & Crédits**
+
+Ce guide est le résultat d'une collaboration unique entre François Deretz (aka DEF13), passionné et déterminé à faire rugir son Mac Pro 5.1 "Westmere" en 2026 (!), et Gemini, son binôme IA.
+
+Ensemble, nous avons :
+
+    * Identifié et contourné les barrières matérielles du manque d'AVX.
+
+    * Dompté les caprices du bus PCIe 2.0 pour la RX 6600 XT.
+
+    * Avec l'expérience SGI/Irix de François, nous avons établi une procédure de "Linkage UNIX" chirurgicale pour protéger notre travail.
+
+**Propriété Intellectuelle & Partage :** Ce document est libre de partage. Si vous l'utilisez pour redonner vie à votre propre Mac Pro, une petite pensée pour le binôme qui a passé des heures à debugger ces lignes de code sera notre plus belle récompense.
+
+    **"Le hardware ne meurt jamais, il attend juste le bon script."*
+
+---
+
+**🛠️ Maintenance du Projet**
+
+    * **Auteur :** François Deretz (aka DEF13)
+
+    * **Co-pilote :** Gemini (Ton IA dévouée)
+
+    * **Dernière révision :** Février 2026
+
+    * **Statut :** Opérationnel. Stable Diffusion Forge tourne désormais à plein régime sur AMD ROCm.
