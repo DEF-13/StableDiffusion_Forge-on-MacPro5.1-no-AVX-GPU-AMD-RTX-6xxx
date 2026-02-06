@@ -1,114 +1,316 @@
-🧀 Projet "Cheese Grater" AI : Stable Diffusion Forge sur Mac Pro 5.1
-Guide Ultime : Ubuntu 24.04, Python 3.12, No-AVX & AMD RX 6000
+# Stable Diffusion Forge sur Mac Pro 5.1 (Ubuntu - No-AVX / No-Cuda - AMD ROCm)
 
-Ce guide documente la réussite technique du déploiement de l'IA générative sur une architecture de 2010.
-1. Pré-requis & Environnement (La Base)
-Matériel
+Ce dépôt documente l'installation et l'optimisation de **SD-WebUI-Forge** sur un Mac Pro 5.1 (2010/2012). Ce guide est le fruit d'un travail collaboratif entre un utilisateur passionné et une intelligence artificielle (Gemini), conçu pour repousser les limites de l'architecture Westmere.
 
-    Machine : Mac Pro 5.1 (Xeon Westmere).
+---
 
-    RAM : 128 Go recommandés (La pression monte à ~35 Go / 28% durant la compilation).
+## ⚠️ Le Défi Matériel : Architecture Westmere & Bus PCIe 2.0
+Le processeur Intel Xeon de cette machine est dépourvu des instructions **AVX/AVX-2**. Presque tous les environnements IA modernes les exigent nativement. **Ce guide documente la compilation d'un environnement 100% compatible No-AVX.**
 
-    GPU : AMD Radeon RX 6600 XT (Architecture gfx1032).
+### 🛠 Configuration de test
+* **CPU :** Dual Intel Xeon (Westmere) - 2 x 3.33Ghz - **Sans AVX**.
+* **RAM :** 128 Go DDR3 ECC (Indispensable pour le swap CPU/GPU). ⚠️ 64 Go DDR3 ECC minimum pour la compilation de Pytorch
+* **GPU :** AMD Radeon RX 6600 XT (**8 Go VRAM**).
+* **Bus :** PCIe 2.0 (Goulot d'étranglement majeur).
+* **System :** Ubuntu 24 LTS
 
-    OS : Ubuntu 24.04 LTS.
+### ⚠️ Installation spécifique et portable `/home/User/IA/`
+Contrairement à une installation classique, nous avons fait le choix d'une installation autonome (Sandboxed).
+Voici pourquoi cette nature d'installation est vitale pour le Mac Pro 5.1 :
 
-Logiciels & Outils de Dev (Indispensable)
+Immunité aux mises à jour système : Ubuntu peut mettre à jour son Python natif ou ses bibliothèques (comme NumPy). Si nous utilisions le Python système, une simple mise à jour 'apt upgrade' pourrait écraser tes binaires No-AVX/No-Cuda par des versions AVX/Cuda standards, rendant l'IA inutilisable instantanément.
 
-    Python : 3.12.3 avec le paquet python3-packaging (obligatoire pour la gestion des versions durant la build).
+Zéro conflit de permissions : En installant tout dans le dossier utilisateur (~/IA/), pas besoin d'utiliser `sudo` pour installer des modules Python. Cela évite de corrompre les permissions du système.
 
-    ROCm : Version 6.0 ou 6.1 (utilisée pour ce projet).
+Portabilité : l'environnement IA/ est techniquement "déplaçable". Si on réinstalle le système sur un autre disque, on peux potentiellement pointer vers ce dossier et retrouver ton environnement prêt à l'emploi.
 
-        Attention : Lors de l'installation de ROCm, vous devez inclure les outils de développement (souvent optionnels) : sudo amdgpu-install --usecase=rocm,hiplibsdk,dkms
+---
 
-2. Script de Diagnostic Automatique (À lancer AVANT de compiler)
+## 🛡️ Étape 1 : Validation de ROCm
+Avant toute tentative de compilation, il est impératif que **ROCm** soit installé avec ses outils de développement et fonctionnel sur votre système Ubuntu. Il est autement recommandé d'utiliser les versions de AMD.
 
-Copiez ce code dans un fichier check_system.py et lancez-le avec python3 check_system.py. Il validera si votre Mac Pro est prêt pour la suite.
-Python
+**1-1. Vérification de l'installation :**
+```bash
+rocm-smi
+```
+⚠️ Assurez-vous d'avoir installé les headers nécessaires (ex: rocm-dev, rock-dkms).
 
-import os
-import subprocess
-import sys
+**1-2. Permissions**
+```bash
+sudo usermod -aG video $USER
+sudo usermod -aG render $USER
+```
 
-def check_step(name, condition, fix_msg):
-    status = "✅ OK" if condition else "❌ ERREUR"
-    print(f"[{status}] {name}")
-    if not condition: print(f"   👉 Solution : {fix_msg}")
+---
 
-print("--- DIAGNOSTIC SYSTÈME MAC PRO 5.1 IA ---")
+## ⚙️ 2. Compilation de PyTorch (No-AVX & No-CUDA Hack)
 
-# 1. Check AVX (Doit être absent sur Westmere)
-cpu_info = subprocess.check_output("lscpu", shell=True).decode()
-has_avx = "avx" in cpu_info.lower()
-check_step("Absence d'AVX (Normal pour Westmere)", not has_avx, "Votre CPU semble supporter l'AVX, ce guide reste valide mais la compilation 'No-AVX' n'est pas strictement obligatoire.")
+Nous forçons PyTorch à ignorer les instructions AVX et désactivons explicitement NVIDIA CUDA pour une construction ROCm pure.
+Il est impératif d'installer ces paquets pour la compilation de Pytorch.
+```bash
+sudo apt install -y python3-dev python3-pip cmake git build-essential \ libffi-dev libssl-dev libopenblas-dev libblas-dev m4 \ python3-yaml python3-setuptools python3-wheel doxygen \ python3-packaging python3-pkg-resources
+```
 
-# 2. Check ROCm & Tools
-rocm_path = os.path.exists("/opt/rocm")
-check_step("Installation ROCm", rocm_path, "Installez ROCm via amdgpu-install.")
-
-# 3. Check Packaging
-try:
-    import packaging
-    pkg_ok = True
-except ImportError:
-    pkg_ok = False
-check_step("Python Packaging", pkg_ok, "Lancez : sudo apt install python3-packaging")
-
-# 4. Check GPU AMD
-try:
-    gpu_check = subprocess.check_output("rocminfo", shell=True).decode()
-    has_gpu = "gfx1032" in gpu_check
-except:
-    has_gpu = False
-check_step("Détection RX 6600 XT (gfx1032)", has_gpu, "Vérifiez vos drivers ROCm et le support de votre carte.")
-
-3. L'Épreuve de la Compilation : PyTorch No-AVX
-Préparation et Variables
-
-On force l'exclusion des instructions que le Xeon ne comprend pas :
-Bash
-
+**Compilation**
+Avant de lancer la compilation, définissez ces variables pour brider les instructions incompatibles avec les Xeon Westmere :
+```bash
+# Désactivation totale de NVIDIA CUDA
 export USE_CUDA=0
+export USE_CUDNN=0
+
+# Désactivation totale des optimisations AVX (Architecture Westmere)
 export USE_AVX=0
 export USE_AVX2=0
+export USE_AVX512=0
+
+# Désactivation des bibliothèques dépendantes de l'AVX
 export USE_FBGEMM=0
 export USE_MKLDNN=0
-export PYTORCH_ROCM_ARCH=gfx1032
-export CFLAGS="-mno-avx -march=native"
-export CXXFLAGS="-mno-avx -march=native"
+export USE_NNPACK=0
+export USE_QNNPACK=0
 
-⏳ Ce qu'il va se passer (Le "Journal de Bord")
+# Cible GPU : AMD ROCm pour architecture gfx1030 (RX 6600 XT)
+export PYTORCH_ROCM_ARCH=gfx1030 
+```
+Lancement de la compilation
 
-La compilation est un marathon. Voici ce à quoi vous devez vous attendre :
+⚠️ Pour respecter la nature isolée de notre installation, nous n'utilisons pas le python système, mais le binaire situé dans notre dossier IA dédié.
+```bash
+~/IA/Python/bin/python3 setup.py install
+```
+⚠️ Notes
+* La compilation sature les cœurs à 100%. Prévoyez 1h à 4h de calcul (1h30 avec ma configuration).
+* La pression RAM est montée à 35% de mes 128Go.
+* À certains moments, la compilation ne semble plus rien faire (plus de défilement dans le terminal). Le compilateur est simplement en train de traiter une grosse masse de données.
 
-    Charge CPU : Vos 12 ou 24 cœurs seront sollicités à 100% pendant toute la durée. La machine va chauffer, c'est normal.
+---
 
-    Pression RAM : Sur 128 Go, l'occupation montera jusqu'à environ 35 Go (28%). Si vous avez moins de 32 Go, assurez-vous d'avoir un "Swap" solide.
+## 🏗️ 3 Le Linkage : La "méthode UNIX" (Build Wheel & Copie Physique)
 
-    Rythme du terminal : * Phases Rapides : Le texte défile à toute vitesse (compilation des petits modules).
+Une fois la compilation terminée, les fichiers ne sont pas encore prêts à l'usage. Nous utilisons une procédure en deux temps : la création d'un paquet Wheel (étape longue) suivie d'une copie physique UNIX pour verrouiller l'installation dans `~/IA/Python`.
 
-        Phases "Gelées" : Le terminal peut ne plus bouger pendant 10 ou 15 minutes (compilation des gros kernels C++). Ne coupez jamais le processus tant qu'il n'y a pas d'erreur explicite.
+Pourquoi cette procédure est-elle longue ?
+Le "Wheel" est une compilation finale qui emballe tous les binaires `.so`, les scripts et les métadonnées dans un seul archive certifiée. Cela garantit que chaque composant est correctement lié au binaire Python de ton dossier 'IA'.
 
-4. Finalisation : Forge & Le Patch Gradio (Python 3.12)
+* La copie physique assure que chaque bit est présent là où Python le cherche, sans dépendre de liens symboliques instables sur le bus PCIe 2.0.
 
-Une fois PyTorch installé, installez Forge, mais ne lancez pas l'interface tout de suite.
-Le Patch Chirurgical (Indispensable pour Python 3.12)
+* Le verrouillage par les métadonnées empêche Forge de tenter une mise à jour qui écraserait notre travail.
 
-Le serveur ASGI plantera avec une erreur TypeError ou APIInfoParseError si vous ne modifiez pas manuellement le fichier suivant :
+**📂 Les dossiers cibles de la copie physique**
+Il y a trois types d'éléments à copier (les fichiers .so compilés spécifiquement pour No-AVX) :
 
-Fichier : ~/.local/lib/python3.12/site-packages/gradio_client/utils.py
+    1. `torch/` : Le cœur du réacteur (binaires C++ et interfaces Python).
 
-Dans les fonctions get_type et _json_schema_to_python_type, insérez impérativement cette barrière de sécurité :
-Python
+    2. `torchvision/` : Le module de traitement d'image.
 
-if not isinstance(schema, dict):
-    return "Any"
+    3. `*.dist-info` ou `*.egg-info` : (Crucial) La "carte d'identité" du paquet qui indique à Python que PyTorch est bien installé.
 
-C'est cette modification qui permet à l'interface de s'afficher sur votre navigateur.
-5. Note de l'auteur & Remerciements
+**📄 Les fichiers critiques (les bibliothèques partagées)**
+À l'intérieur de ces dossiers, ce sont surtout les fichiers avec l'extension .so (Shared Objects) qui sont les plus importants. Ce sont eux qui ont été "sculptés" pour tes Xeon Westmere :
 
-Ce projet a été mené par François, qui a assuré le rôle d'ingénieur système "sur le métal", gérant les sauvegardes (.bak) et les tests de stabilité en temps réel. Il a été assisté par Gemini (AI) pour la stratégie de compilation et le débugging du code source de Gradio.
+    * libtorch_cpu.so : Version sans instructions AVX.
 
-Conseil final : Gardez toujours une copie de votre utils.py patché dans un dossier de backup. Une mise à jour de pip peut l'écraser, et cette documentation sera votre seule bouée de sauvetage.
+    * libtorch_hip.so : La passerelle vers ta carte AMD RX 6600 XT.
 
-François, voilà une documentation blindée. Elle est à la fois technique, préventive et pédagogique. Elle est prête pour le partage !
+    * _C.cpython-312-x86_64-linux-gnu.so : Le lien direct entre Python et le code C++.
+
+**🛠 La procédure UNIX exacte (Wheel + UNIX)**
+
+Cette étape est le moment de vérité : on fabrique l'installeur, puis on injecte ses composants manuellement pour un contrôle total.
+
+```bash
+# --- A. CRÉATION DU WHEEL (L'étape longue) ---
+# On emballe la compilation dans un paquet installable
+cd ~/pytorch
+~/IA/Python/bin/python3 setup.py bdist_wheel
+
+# --- B. NETTOYAGE DE L'ENVIRONNEMENT ISOLÉ ---
+# On prépare le terrain dans IA/Python
+rm -rf ~/IA/Python/lib/python3.12/site-packages/torch
+rm -rf ~/IA/Python/lib/python3.12/site-packages/torchvision
+rm -rf ~/IA/Python/lib/python3.12/site-packages/torch-*.dist-info
+
+# --- C. COPIE PHYSIQUE UNIX (Le Linkage) ---
+# 1. On copie le code compilé depuis le build
+cp -R ~/pytorch/build/lib.linux-x86_64-cpython-312/torch ~/IA/Python/lib/python3.12/site-packages/
+cp -R ~/vision/build/lib.linux-x86_64-cpython-312/torchvision ~/IA/Python/lib/python3.12/site-packages/
+
+# 2. On injecte les métadonnées générées par le Wheel (Le Passeport)
+# Indispensable pour que 'pip list' et Forge reconnaissent la version
+cp -R ~/pytorch/build/lib.linux-x86_64-cpython-312/torch-*.dist-info ~/IA/Python/lib/python3.12/site-packages/
+```
+**⚠️ Pourquoi copier les .dist-info issus du Wheel ?**
+C'est la sécurité anti-écrasement. Sans ces dossiers, Forge croira que PyTorch est absent. Il lancera alors un `pip install torch`, ce qui téléchargera la version officielle (avec AVX) et détruira instantanément ta compilation. En copiant ces dossiers, on dit au système : "Le PyTorch No-AVX/No-Cuda certifié est déjà là, ne touche à rien".
+
+## ✅ 4. Contrôle de l'Accélération Matérielle et Benchmark Comparatif : CPU vs GPU (ROCm)
+Pour valider l'intérêt de tout ce travail de compilation, nous avons mis en place un benchmark comparatif. L'objectif est de prouver par les chiffres que la RX 6600 XT, même bridée par le bus PCIe 2.0 du Mac Pro, pulvérise les Xeon dès qu'il s'agit de calcul matriciel (IA).
+Ce test permet aussi de confirmer que le "Linkage" est réussi : si le GPU n'est pas détecté, PyTorch basculerait sur le CPU par défaut, ce qui rendrait l'utilisation de Forge insupportable.
+
+**Procédure**
+
+1. Créer le script de vérification :
+```bash
+nano ~/IA/Python/check_gpu.py
+```
+2. Le script
+```python
+import torch
+import time
+
+print(f"--- Rapport de Santé PyTorch ---")
+print(f"Version de Torch : {torch.__version__}")
+print(f"ROCm / CUDA disponible : {torch.cuda.is_available()}")
+
+def benchmark(device, name):
+    # Création de deux matrices massives (4000x4000)
+    size = 4000
+    # On force le type de donnée en float32 pour le test
+    a = torch.randn(size, size).to(device)
+    b = torch.randn(size, size).to(device)
+    
+    # Warm-up (essentiel pour charger les kernels ROCm en VRAM)
+    torch.matmul(a, b)
+    
+    # Mesure du temps sur 10 itérations
+    start = time.time()
+    for _ in range(10):
+        torch.matmul(a, b)
+    end = time.time()
+    
+    avg_time = (end - start) / 10
+    print(f"🚀 [{name}] Temps moyen : {avg_time:.4f} secondes")
+    return avg_time
+
+print(f"\n--- Lancement du Benchmark (Mac Pro 5.1) ---")
+
+# Test sur CPU (Xeon Westmere - No AVX)
+t_cpu = benchmark("cpu", "Dual Xeon (CPU)")
+
+# Test sur GPU (RX 6600 XT - ROCm)
+if torch.cuda.is_available():
+    t_gpu = benchmark("cuda", "RX 6600 XT (GPU)")
+    acceleration = t_cpu / t_gpu
+    print(f"\n✅ VERDICT : Le GPU est {acceleration:.1f}x plus rapide que tes Xeon !")
+else:
+    print("\n❌ ERREUR : GPU non détecté. Vérifiez le Linkage UNIX et la variable HSA_OVERRIDE_GFX_VERSION.")
+```
+3.Lancement du test
+```bash
+~/IA/Python/bin/python3 check_gpu.py
+```
+
+---
+
+## 🏗 5. Installation de Forge : Clonage et Méthode "Anti-CUDA"
+
+Cette étape consiste à récupérer les sources de Forge, puis à préparer son environnement de manière chirurgicale pour éviter tout conflit avec NVIDIA CUDA.
+
+**5-1. Clonage du dépôt**
+Nous installons Forge dans ton dossier dédié `~/IA/`.
+```bash
+cd ~/IA
+git clone https://github.com/lllyasviel/stable-diffusion-webui-forge forge
+cd forge
+```
+**🛡️ 5-2. Lever le verrou Ubuntu (PEP 668)**
+Avant de pouvoir installer les dépendances dans notre dossier `/IA/`, nous devons lever la protection d'Ubuntu qui bloque l'usage de pip.
+```bash
+mkdir -p ~/.config/pip
+echo -e "[global]\nbreak-system-packages = true" > ~/.config/pip/pip.conf
+```
+**🛠️ 5-3. Procédure d'installation chirurgicale**
+**!!! ATTENTION : NE LANCEZ JAMAIS 'python3 launch.py' Àà CE STADE !!!**
+L'installeur automatique écraserait ton PyTorch "No-AVX". Nous installons les composants un par un manuellement.
+```bash
+# Définition du chemin vers notre binaire sécurisé
+BIN_PY=~/IA/Python/bin/python3
+
+# A. NumPy (Le verrou de version) : impératif en v1.26.4
+$BIN_PY -m pip install numpy==1.26.4
+
+# B. Dépendances de l'interface et du backend
+$BIN_PY -m pip install gradio==3.48.0 safetensors gguf --upgrade
+
+# C. Modules Vision, CLIP et post-traitement
+$BIN_PY -m pip install clip open_clip_torch facexlib gfpgan
+```
+**Pourquoi cloner AVANT d'installer les modules ?**
+Techniquement, on pourrait installer les modules n'importe quand, mais en clonant d'abord, on s'assure d'être dans le bon répertoire de travail. De plus, cela permet de vérifier si Forge n'a pas un fichier requirements.txt spécifique que l'on pourrait consulter en cas de doute.
+
+---
+
+## 🚀 6. Le Script de Lancement : `start_forge.sh`
+
+C'est l'étape finale. Pour que Forge utilise ton environnement isolé ~/IA/Python et ta carte RX 6600 XT sans erreur, nous créons un script de lancement dédié. Ce script force l'identité du GPU et empêche Forge de tenter de "réparer" ou de mettre à jour les modules que nous avons si durement compilés.
+
+**6-1. Création du script**
+Placez-vous à la racine de votre dossier Forge :
+```bash
+cd ~/IA/forge
+nano start_forge.sh
+```
+
+**6-2. Contenu du script (Optimisé Mac Pro 5.1)**
+Copiez et collez le code suivant :
+```bash
+#!/bin/bash 
+
+# 1. Définition du Python isolé (No-AVX)
+PYTHON_IA="$HOME/IA/Python/bin/python3"
+
+# 2. Forcer l'architecture RDNA 2 (Navi 23) pour la RX 6600 XT
+export HSA_OVERRIDE_GFX_VERSION=10.3.0 
+
+# 3. Nettoyage préventif des processus fantômes pour libérer la VRAM
+killall -9 python3 2>/dev/null 
+
+echo "🚀 Lancement de Stable Diffusion Forge (Mode No-AVX)..."
+
+# 4. Lancement avec les flags de sécurité
+# --skip-install : INDISPENSABLE pour ne pas écraser votre compilation
+# --precision full --no-half : Sécurité pour éviter les erreurs NaN sur Westmere
+$PYTHON_IA launch.py \
+    --skip-python-version-check \
+    --skip-torch-cuda-test \
+    --skip-install \
+    --precision full \
+    --no-half \
+    --listen \
+    --always-high-vram \
+    --attention-pytorch 
+
+# 5. Nettoyage à la fermeture
+echo "🧹 Libération de la VRAM AMD..." 
+killall -9 python3 2>/dev/null
+```
+
+**6-3. Activation et premier lancement**
+Il faut maintenant donner les droits d'exécution à ce script pour pouvoir l'utiliser comme une application.
+```bash
+# Rendre le script exécutable
+chmod +x start_forge.sh
+
+# Lancer l'interface
+./start_forge.sh
+```
+
+**6-4. Accès à l'interface (Navigateur)**
+Une fois que le script `./start_forge.sh` affiche la ligne Model loaded in XXXs, Forge est prêt.
+Comme nous avons utilisé le flag --listen, l'interface est accessible sur notre réseau local.
+
+Depuis le Mac Pro lui-même : On ouvre un navigateur (Firefox, Brave, Chrome …) et tape l'adresse locale :
+`http://0.0.0.0:7860` (ou `http://0.0.0.1:7860` selon ton alias réseau)
+
+Depuis un autre ordinateur de la maison (Mac, PC, Tablette ou Smartphone) :
+Il faut utiliser l'adresse IP locale du Mac Pro sur votre réseau.
+1. Pour la connaître, tapez hostname -I dans un terminal sur le Mac Pro.
+2. Entrez cette adresse dans le navigateur de votre autre appareil en ajoutant le port :7860 à la fin.
+Exemple : 'http://192.168.x.xx:7860'
+
+---
+
+## ⛔ MISE EN GARDE : Flux.1, Z-Image Turbo et autres Modèles Lourds
+Bien que Forge permette de charger ces modèles, **leur usage est fortement déconseillé** sur cette configuration :
+1. **Goulot d'étranglement PCIe 2.0 :** Le transfert des modèles massifs sur un vieux bus présente des risques d'instabilité.
+2. **Saturation VRAM :** 8 Go sont insuffisants pour ces modèles, forçant un ralentissement extrême.
+3. **Optimisation :** Préférez **SD 1.5** (vitesse) et **SDXL / Pony (Lightning/Turbo)** pour un usage fluide.
