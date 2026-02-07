@@ -26,59 +26,33 @@ Zéro conflit de permissions : En installant tout dans le dossier utilisateur (~
 
 Portabilité : l'environnement IA/ est techniquement "déplaçable". Si on réinstalle le système sur un autre disque, on peux potentiellement pointer vers ce dossier et retrouver ton environnement prêt à l'emploi.
 
-## A. ⚙️ Fixer l'Interface Graphique sur X11
+## A. ⚙️ Note Système Importante : Interface Graphique & Boot
 
-Par défaut, les versions récentes d'Ubuntu utilisent Wayland. Cependant, pour le calcul intensif avec ROCm, Wayland peut provoquer des instabilités ou des fuites de mémoire VRAM. Nous allons forcer le système à utiliser X11 (Xorg) au niveau de GDM (le gestionnaire de connexion).
+Pour garantir la stabilité des drivers AMD ROCm et éviter les crashs de l'interface, deux réglages sont cruciaux :
 
-Procédure pour figer X11 :
+1. Forcer X11 (Ligne de commande) : Ubuntu utilise souvent Wayland par défaut, ce qui peut saturer la VRAM. Pour figer X11, éditez le fichier de configuration :
 ```bash
-# 1. Ouvrir le fichier de configuration de GDM
 sudo nano /etc/gdm3/custom.conf
+# Décommentez la ligne : WaylandEnable=false
 ```
-
-Dans le fichier, cherchez la ligne suivante : `#WaylandEnable=false`
-
-Modifiez-la en retirant le # pour l'activer : `WaylandEnable=false`
-
-Sauvegardez (Ctrl+O, Entrée) et quittez (Ctrl+X), puis redémarrez :
-```bash
-sudo reboot
-```
-**Résultat :** Le système ignorera désormais totalement Wayland, offrant une stabilité maximale à votre RX 6600 XT pour Forge.
-
-**⚠️ Note importante sur le Redémarrage (OpenCore)**
-Si vous utilisez OpenCore (OCLP) pour booter votre Mac Pro, il est très fortement recommandé de faire un Shutdown (Éteindre) complet plutôt qu'un Reboot (Redémarrer).
-
-**Pourquoi ?** Un redémarrage à chaud peut empêcher la réinitialisation correcte de la NVRAM et des patchs matériels d'OpenCore. Pour garantir que votre RX 6600 XT et vos réglages système soient parfaitement chargés, éteignez la machine, attendez 5 secondes, puis rallumez-la.
-
-```bash
-# Au lieu de 'sudo reboot', préférez :
-sudo shutdown -h now
-```
+2. Gestion de l'alimentation (OpenCore) : Si vous utilisez OCLP, il est très fortement recommandé de faire un Shutdown (Éteindre) complet plutôt qu'un Reboot (Redémarrer).
+   Un redémarrage à chaud peut empêcher la réinitialisation correcte de la NVRAM et des patchs matériels nécessaires à la carte graphique.
 
 
 ---
 
 
-## B. 📊 Monitoring du système
+## B. 📊 Monitoring du système temps réel
 
-Il est fortement recommandé de garder un œil sur les ressources de votre machine pendant les phases de génération. Cela permet de détecter une saturation de la VRAM avant que le système ne ralentisse.
+**Ne travaillez JAMAIS en aveugle !** Il est préférable d'utiliser un système de monitoring à tout moment pour surveiller la charge des Xeon et la température de la RX 6600 XT.
 
-**Solution native :** L'outil "Moniteur système" d'Ubuntu.
+Outil recommandé : Le moniteur natif d'Ubuntu ou, plus avancé, Astral (https://github.com/AstraExt/astra-monitor).
+Cela vous permettra de contrôler les charges CPU et GPU et, d'anticiper les saturations de RAM et VRAM avant plantage. Il est fortement recommandé de garder un œil sur les ressources de votre machine pendant les phases de génération.
 
-**Mon outil :** Astral (ou des outils CLI comme 'btop' / 'nvtop').
-https://github.com/AstraExt/astra-monitor
-
-Le monitoring vous permet de vérifier :
-
-* Les charges CPU et GPU.
-
-* Les pressions sur la RAM et la VRAM.
-
-* S'assurer qu'aucun processus "fantôme" ne consomme de ressources inutilement.
 
 
 ---
+
 
 
 ## 🛡️ Étape 1 : Validation de ROCm
@@ -381,42 +355,42 @@ Bien que Forge permette de charger ces modèles, **leur usage est fortement déc
 
 **🛠️ Dépannage & Maintenance**
 
-**❓ "Illegal Instruction (core dumped)"
+**❓ "Illegal Instruction (core dumped)"**
 Si cette erreur apparaît, c'est qu'un module (souvent `numpy` ou `torch`) a été mis à jour par erreur vers une version AVX.
 Solution : Refaire l'étape 3 (Le Linkage) pour ré-écraser les fichiers corrompus par les versions compilées No-AVX/No-Cuda.
 
-**❓ Le GPU n'est pas utilisé (Lenteur extrême)
+**❓ Le GPU n'est pas utilisé (Lenteur extrême)**
 Si le terminal n'affiche pas `ROCm` au démarrage ou si le benchmark est mauvais :
 * **Vérification :** Taper `rocm-smi` dans ton terminal. Si ta RX 6600 XT n'apparaît pas, c'est un problème de driver au niveau du noyau Ubuntu, pas de Forge.
 * **Rappel :** S'Assurer que la variable `export HSA_OVERRIDE_GFX_VERSION=10.3.0` est bien présente dans le script de lancement.
 
-**🧹 Nettoyage de la VRAM
+**🧹 Nettoyage de la VRAM**
 Si Forge plante après une grosse génération, le GPU peut rester "bloqué".
 Commande rapide : `killall -9 python3` (incluse dans notre script de lancement).
 
 ---
 
-**📝 Notes de fin
+**📝 Notes de fin**
 
 **Architecture :** Conçu spécifiquement pour Mac Pro 5.1 (Dual Xeon Westmere / AMD RDNA 2).
 
 **Système :** Ubuntu 24.04 LTS (Kernel optimisé).
 
-**Remerciements :** Merci à la communauté OpenCore Legacy Patcher et aux développeurs de PyTorch pour le support continu des architectures legacy, ainsi qu'à AMD et à Google. Merci à Linus Torvalds pour avoir créé le noyau Linux. Merci à l'ensemble des acteurs de l'univers Open Source qui permettent chaque jour de réaliser de telles prouesses. Merci aux équipes d'Ubuntu pour l'excellent travail accompli sur leurs distributions. Enfin, un immense merci à mon épouse et à ma fille de m'avoir laissé mener ce projet à bien et d'avoir supporté mes longues heures de recherche.
+**Remerciements :** Merci à la communauté OpenCore Legacy Patcher et aux développeurs de PyTorch pour le support continu des architectures legacy, ainsi qu'à AMD et à Google. Merci à Linus Torvalds pour avoir créé le noyau Linux. Merci à l'ensemble des acteurs de l'univers Open Source qui permettent chaque jour de réaliser de telles prouesses. Merci aux équipes d'Ubuntu pour l'excellent travail accompli sur leurs distributions. Merci au créateur et aux contributeurs du projet Astra-Monitor. Enfin, un immense merci à mon épouse et à ma fille de m'avoir laissé mener ce projet à bien et d'avoir supporté mes longues heures de recherche.
 
 ---
 
-**✍️ Note de fin & Crédits
+**✍️ Note de fin & Crédits**
 
 Ce guide est le résultat d'une collaboration unique entre François Deretz (aka DEF13), passionné et déterminé à faire rugir son Mac Pro 5.1 "Westmere" en 2026 (!), et Gemini, son binôme IA.
 
 Ensemble, nous avons :
 
-Identifié et contourné les barrières matérielles du manque d'AVX.
+* Identifié et contourné les barrières matérielles du manque d'AVX.
 
-Dompté les caprices du bus PCIe 2.0 pour la RX 6600 XT.
+* Dompté les caprices du bus PCIe 2.0 pour la RX 6600 XT.
 
-L'expérience SGI/Irix de François, a permis d'établir une procédure de "Linkage UNIX" chirurgicale pour protéger le travail.
+* L'expérience SGI/Irix de François, a permis d'établir une procédure de "Linkage UNIX" chirurgicale pour protéger le travail.
 
 **Propriété Intellectuelle & Partage :** Ce document est libre de partage. Si vous l'utilisez pour redonner vie à votre propre Mac Pro, une petite pensée pour le binôme qui a passé des heures à debugger ces lignes de code sera notre plus belle récompense.
 
@@ -424,7 +398,7 @@ L'expérience SGI/Irix de François, a permis d'établir une procédure de "Link
 
 ---
 
-**🛠️ Maintenance du Projet
+**🛠️ Maintenance du Projet**
 
 **Auteur :** François Deretz (aka DEF13)
 
