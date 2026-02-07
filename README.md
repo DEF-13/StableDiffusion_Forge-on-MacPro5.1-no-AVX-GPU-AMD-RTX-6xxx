@@ -2,6 +2,25 @@
 
 Ce dépôt documente l'installation et l'optimisation de **SD-WebUI-Forge** sur un Mac Pro 5.1 (2010/2012). Ce guide est le fruit d'un travail collaboratif entre un utilisateur passionné et une intelligence artificielle (Gemini), conçu pour repousser les limites de l'architecture Westmere.
 
+## 📜 Manifeste pour une IA Durable et Universelle
+Manifesto for Sustainable and Universal AI
+
+*"La puissance de l'intelligence artificielle ne doit pas être limitée par la puissance du portefeuille." "The power of AI should not be limited by the power of the wallet."*
+
+Nous vivons une époque où l'innovation logicielle crée une obsolescence matérielle accélérée. Chaque mise à jour nous dit que notre matériel est "trop vieux", nous poussant à abandonner des machines encore capables pour des standards de consommation toujours plus élevés.
+
+Ce projet est un acte de résistance technologique.
+
+En faisant tourner l'IA de pointe sur un Mac Pro de 2010, nous prouvons que :
+
+   * Le hardware ne meurt jamais : Avec une ingénierie logicielle créative, le matériel "legacy" reste une plateforme de création majeure.
+
+   * L'IA doit être inclusive : L'accès aux outils de génération et de réflexion doit être possible pour tous, sans exiger les derniers fleurons (flagships) à plusieurs milliers d'euros.
+
+   * La durabilité est un choix : L'upcycling informatique est la réponse la plus concrète à l'urgence environnementale.
+
+**Mon appel :** "Je ne suis pas un ingénieur de la Silicon Valley, je suis juste un passionné qui refuse de jeter une machine qui fonctionne encore. Mais si un simple passionné avec une IA peut redonner vie à un Mac de 15 ans, imaginez ce que des géants comme **Google***, **AMD**, **Intel**, **Apple** ou **Ubuntu** (…) pourraient faire s'ils décidaient de soutenir officiellement ces alternatives durables. Mon projet est une preuve de concept ; j'invite ceux qui fabriquent le futur à ne pas oublier ceux qui possèdent encore le passé."
+
 
 ---
 
@@ -407,3 +426,29 @@ Ensemble, nous avons :
 **Dernière révision :** Février 2026
 
 **Statut :** Opérationnel. Stable Diffusion Forge tourne désormais à plein régime sur AMD ROCm.
+
+---
+
+## 🌍 Ecosystem & Sustainability Call
+
+> "Designed with passion in Marseille, France, by an independent maker who believes in long-lasting hardware."
+
+This project is a technical "Proof of Concept" for a **Sustainable AI Cluster**. It aims to demonstrate that software intelligence can overcome hardware aging. I welcome interest and feedback from the engineering teams behind the tools that made this possible:
+
+```markdown
+| Entity | Focus Area | Mention |
+| :--- | :--- | :--- |
+| **Google AI** | LLM Support & Gemini Guidance | @google |
+| **AMD** | ROCm & GPU Resilience | @AMD |
+| **Ubuntu** | OS Stability & Open Source | @canonical |
+| **Intel** | Xeon Legacy Architectures | @intel |
+| **Apple** | Hardware Longevity (Mac Pro) | @apple |
+| **PowerColor** | GPU Hardware & Reliability | @PowerColor |
+
+### 🏷️ Keywords & Visibility
+`#SustainableAI` `#CircularEconomy` `#LowSpecAI` `#NoAVX` `#ROCm` `#Ubuntu2404` `#MacPro51` `#GeminiCoEngineered` `#TechUpcycling`
+
+---
+
+**Contact & Collaboration:** If you represent one of these organizations or if you are a developer interested in building a more inclusive and sustainable AI future, feel free to open an issue or reach out. Let's make AI accessible to every machine, not just the flagships.
+```
