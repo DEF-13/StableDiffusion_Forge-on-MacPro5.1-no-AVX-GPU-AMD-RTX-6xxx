@@ -2,7 +2,9 @@
 
 Ce dépôt documente l'installation et l'optimisation de **SD-WebUI-Forge** sur un Mac Pro 5.1 (2010/2012). Ce guide est le fruit d'un travail collaboratif entre un utilisateur passionné et une intelligence artificielle (Gemini), conçu pour repousser les limites de l'architecture Westmere.
 
+
 ---
+
 
 ## ⚠️ Le Défi Matériel : Architecture Westmere & Bus PCIe 2.0
 Le processeur Intel Xeon de cette machine est dépourvu des instructions **AVX/AVX-2**. Presque tous les environnements IA modernes les exigent nativement. **Ce guide documente la compilation d'un environnement 100% compatible No-AVX.**
@@ -12,7 +14,7 @@ Le processeur Intel Xeon de cette machine est dépourvu des instructions **AVX/A
 * **RAM :** 128 Go DDR3 ECC (Indispensable pour le swap CPU/GPU). ⚠️ 64 Go DDR3 ECC minimum pour la compilation de Pytorch
 * **GPU :** AMD Radeon RX 6600 XT (**8 Go VRAM**).
 * **Bus :** PCIe 2.0 (Goulot d'étranglement majeur).
-* **System :** Ubuntu 24 LTS
+* **System :** Ubuntu 24 LTS.
 
 ### ⚠️ Installation spécifique et portable `/home/User/IA/`
 Contrairement à une installation classique, nous avons fait le choix d'une installation autonome (Sandboxed).
@@ -24,10 +26,63 @@ Zéro conflit de permissions : En installant tout dans le dossier utilisateur (~
 
 Portabilité : l'environnement IA/ est techniquement "déplaçable". Si on réinstalle le système sur un autre disque, on peux potentiellement pointer vers ce dossier et retrouver ton environnement prêt à l'emploi.
 
+## A. ⚙️ Fixer l'Interface Graphique sur X11
+
+Par défaut, les versions récentes d'Ubuntu utilisent Wayland. Cependant, pour le calcul intensif avec ROCm, Wayland peut provoquer des instabilités ou des fuites de mémoire VRAM. Nous allons forcer le système à utiliser X11 (Xorg) au niveau de GDM (le gestionnaire de connexion).
+
+Procédure pour figer X11 :
+```bash
+# 1. Ouvrir le fichier de configuration de GDM
+sudo nano /etc/gdm3/custom.conf
+```
+
+Dans le fichier, cherchez la ligne suivante : `#WaylandEnable=false`
+
+Modifiez-la en retirant le # pour l'activer : `WaylandEnable=false`
+
+Sauvegardez (Ctrl+O, Entrée) et quittez (Ctrl+X), puis redémarrez :
+```bash
+sudo reboot
+```
+**Résultat :** Le système ignorera désormais totalement Wayland, offrant une stabilité maximale à votre RX 6600 XT pour Forge.
+
+**⚠️ Note importante sur le Redémarrage (OpenCore)**
+Si vous utilisez OpenCore (OCLP) pour booter votre Mac Pro, il est très fortement recommandé de faire un Shutdown (Éteindre) complet plutôt qu'un Reboot (Redémarrer).
+
+**Pourquoi ?** Un redémarrage à chaud peut empêcher la réinitialisation correcte de la NVRAM et des patchs matériels d'OpenCore. Pour garantir que votre RX 6600 XT et vos réglages système soient parfaitement chargés, éteignez la machine, attendez 5 secondes, puis rallumez-la.
+
+```bash
+# Au lieu de 'sudo reboot', préférez :
+sudo shutdown -h now
+```
+
+
 ---
 
+
+## B. 📊 Monitoring du système
+
+Il est fortement recommandé de garder un œil sur les ressources de votre machine pendant les phases de génération. Cela permet de détecter une saturation de la VRAM avant que le système ne ralentisse.
+
+**Solution native :** L'outil "Moniteur système" d'Ubuntu.
+
+**Mon outil :** Astral (ou des outils CLI comme 'btop' / 'nvtop').
+https://github.com/AstraExt/astra-monitor
+
+Le monitoring vous permet de vérifier :
+
+* Les charges CPU et GPU.
+
+* Les pressions sur la RAM et la VRAM.
+
+* S'assurer qu'aucun processus "fantôme" ne consomme de ressources inutilement.
+
+
+---
+
+
 ## 🛡️ Étape 1 : Validation de ROCm
-Avant toute tentative de compilation, il est impératif que **ROCm** soit installé avec ses outils de développement et fonctionnel sur votre système Ubuntu. Il est autement recommandé d'utiliser les versions de AMD.
+Avant toute tentative de compilation, il est impératif que **ROCm** soit installé avec ses outils de développement et fonctionnel sur votre système Ubuntu. Il est hautement recommandé d'utiliser les versions de AMD : https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/install-methods/package-manager/package-manager-ubuntu.html
 
 **1-1. Vérification de l'installation :**
 ```bash
@@ -41,7 +96,9 @@ sudo usermod -aG video $USER
 sudo usermod -aG render $USER
 ```
 
+
 ---
+
 
 ## ⚙️ 2. Compilation de PyTorch (No-AVX & No-CUDA Hack)
 
@@ -315,7 +372,7 @@ Bien que Forge permette de charger ces modèles, **leur usage est fortement déc
 2. **Saturation VRAM :** 8 Go sont insuffisants pour ces modèles, forçant un ralentissement extrême.
 3. **Optimisation :** Préférez **SD 1.5** (vitesse) et **SDXL / Pony (Lightning/Turbo)** pour un usage fluide.
 
-** ⚠️ Format de génération :
+## ⚠️ Format de génération :
 * **Pour SD 1.5 :** utliser les dimensions classiques de génération : 512x512px
 * **Pour SDXL/Pony :** ne pas dépasser le 1024x1024px
 * Pour agrandir les images, un bon set-up de l'upscaler de Forge fait des miracles !
@@ -333,46 +390,46 @@ Si le terminal n'affiche pas `ROCm` au démarrage ou si le benchmark est mauvais
 * **Vérification :** Taper `rocm-smi` dans ton terminal. Si ta RX 6600 XT n'apparaît pas, c'est un problème de driver au niveau du noyau Ubuntu, pas de Forge.
 * **Rappel :** S'Assurer que la variable `export HSA_OVERRIDE_GFX_VERSION=10.3.0` est bien présente dans le script de lancement.
 
-**🧹 Nettoyage de la VRAM**
+**🧹 Nettoyage de la VRAM
 Si Forge plante après une grosse génération, le GPU peut rester "bloqué".
-* Commande rapide : killall -9 python3 (incluse dans notre script de lancement).
+Commande rapide : `killall -9 python3` (incluse dans notre script de lancement).
 
 ---
 
-**📝 Notes de fin**
+**📝 Notes de fin
 
-   * **Architecture :** Conçu spécifiquement pour Mac Pro 5.1 (Dual Xeon Westmere / AMD RDNA 2).
+**Architecture :** Conçu spécifiquement pour Mac Pro 5.1 (Dual Xeon Westmere / AMD RDNA 2).
 
-   * **Système :** Ubuntu 22.04/24.04 LTS (Kernel optimisé).
+**Système :** Ubuntu 24.04 LTS (Kernel optimisé).
 
-   * **Remerciements :** Merci à la communauté OpenCore Legacy Patcher et aux développeurs de PyTorch le support continu des architectures legacy ainsi qu'à AMD et à Google. Merci à mon épouse et à ma fille de m'avoir laissé menner ce projet à bien.
+**Remerciements :** Merci à la communauté OpenCore Legacy Patcher et aux développeurs de PyTorch pour le support continu des architectures legacy, ainsi qu'à AMD et à Google. Merci à Linus Torvalds pour avoir créé le noyau Linux. Merci à l'ensemble des acteurs de l'univers Open Source qui permettent chaque jour de réaliser de telles prouesses. Merci aux équipes d'Ubuntu pour l'excellent travail accompli sur leurs distributions. Enfin, un immense merci à mon épouse et à ma fille de m'avoir laissé mener ce projet à bien et d'avoir supporté mes longues heures de recherche.
 
 ---
 
-**✍️ Note de fin & Crédits**
+**✍️ Note de fin & Crédits
 
 Ce guide est le résultat d'une collaboration unique entre François Deretz (aka DEF13), passionné et déterminé à faire rugir son Mac Pro 5.1 "Westmere" en 2026 (!), et Gemini, son binôme IA.
 
 Ensemble, nous avons :
 
-    * Identifié et contourné les barrières matérielles du manque d'AVX.
+Identifié et contourné les barrières matérielles du manque d'AVX.
 
-    * Dompté les caprices du bus PCIe 2.0 pour la RX 6600 XT.
+Dompté les caprices du bus PCIe 2.0 pour la RX 6600 XT.
 
-    * Avec l'expérience SGI/Irix de François, nous avons établi une procédure de "Linkage UNIX" chirurgicale pour protéger notre travail.
+L'expérience SGI/Irix de François, a permis d'établir une procédure de "Linkage UNIX" chirurgicale pour protéger le travail.
 
 **Propriété Intellectuelle & Partage :** Ce document est libre de partage. Si vous l'utilisez pour redonner vie à votre propre Mac Pro, une petite pensée pour le binôme qui a passé des heures à debugger ces lignes de code sera notre plus belle récompense.
 
-    **"Le hardware ne meurt jamais, il attend juste le bon script."*
+"Le hardware ne meurt jamais, il attend juste le bon script."
 
 ---
 
-**🛠️ Maintenance du Projet**
+**🛠️ Maintenance du Projet
 
-    * **Auteur :** François Deretz (aka DEF13)
+**Auteur :** François Deretz (aka DEF13)
 
-    * **Co-pilote :** Gemini (Ton IA dévouée)
+**Co-pilote :** Gemini
 
-    * **Dernière révision :** Février 2026
+**Dernière révision :** Février 2026
 
-    * **Statut :** Opérationnel. Stable Diffusion Forge tourne désormais à plein régime sur AMD ROCm.
+**Statut :** Opérationnel. Stable Diffusion Forge tourne désormais à plein régime sur AMD ROCm.
