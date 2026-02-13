@@ -410,27 +410,22 @@ Ce projet n'est que la première étape. Voici le plan de vol pour transformer c
 
 🛠️ État de la Flotte & Besoins (Scale-up)
 
-**La base matérielle du cluster est déjà sécurisée :**
+## 🟢 La base matérielle du cluster déjà sécurisée :
 
-    Réseau : Switch dédié 1 Gbit.
+Réseau : Switch dédié 1 Gbit.
+Châssis : 5 x Mac Pro 5.1 (Bi-CPU).
+Mémoire : 640 Go de RAM ECC au total (soit 128 Go par machine).
 
-    Châssis : 5 x Mac Pro 5.1 (Bi-CPU).
+## 🔴 Pour finaliser l'homogénéité du cluster, les besoins restants sont :
 
-    Mémoire : 640 Go de RAM ECC au total (soit 128 Go par machine).
+**Calcul (CPU) :** 8 processeurs Intel Xeon X5680 (3.33 GHz).
+**Objectif :** Maximiser le débit de données vers le GPU et uniformiser les temps de traitement No-AVX.
 
-**Pour finaliser l'homogénéité du cluster, les besoins restants sont :**
+**Stockage :** 4 SSD SATA de 1 To.
+**Objectif :** Permettre le chargement rapide des modèles (Checkpoints) en local sur chaque nœud.
 
-    Calcul (CPU) : 8 processeurs Intel Xeon X5680 (3.33 GHz).
-
-        Objectif : Maximiser le débit de données vers le GPU et uniformiser les temps de traitement No-AVX.
-
-    Stockage : 4 SSD SATA de 1 To.
-
-        Objectif : Permettre le chargement rapide des modèles (Checkpoints) en local sur chaque nœud.
-
-    Graphisme (GPU) : 4 cartes PowerColor Radeon RX 6600 XT 8Go de VRAM.
-
-        Objectif : Standardiser le stack ROCm sur toute la flotte et valider le déploiement "Zero-Config" sans modification électrique (Pixlas Mod non requis pour ce modèle).
+**Graphisme (GPU) :** 4 cartes PowerColor Radeon RX 6600 XT 8Go de VRAM.
+**Objectif :** Standardiser le stack ROCm sur toute la flotte et valider le déploiement "Zero-Config" sans modification électrique (Pixlas Mod non requis pour ce modèle).
 
 ---
 
