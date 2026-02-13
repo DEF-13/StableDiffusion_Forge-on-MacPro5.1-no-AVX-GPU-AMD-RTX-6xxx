@@ -389,6 +389,51 @@ Commande rapide : `killall -9 python3` (incluse dans notre script de lancement).
 
 ---
 
+## 🚀 Roadmap : Vision & Futur du Projet
+
+Ce projet n'est que la première étape. Voici le plan de vol pour transformer ces machines iconiques en une infrastructure d'IA moderne.
+
+### 🟢 Phase 1 : Preuve de Concept (Terminée)
+* [x] Installation d'un GPU AMD RDNA 2 sur bus PCIe 2.0.
+* [x] Compilation PyTorch "No-AVX" et stabilisation de Forge sous Ubuntu 24.04.
+* [x] Valider de fonctionnement sans bug ni crash de Forge en mode "out of a box".
+
+### 🟡 Phase 2 : Puissance & Optimisation (En cours)
+* [ ] **Fine tunning :** optimisation et maximisation des réglages de Forge pour l'exploitation de cette configuration.
+* [ ] **Documentation :** Traduction intégrale du projet pour la communauté internationale.
+
+### 🔴 Phase 3 : Le Cluster (Vision Long Terme)
+* [ ] **Partenariats :** Validation de ces méthodes avec des acteurs comme AMD, Canonical, Intel, Powercolor, Google.
+* [ ] **Pixlas Mod :** Modification de l'alimentation pour supporter des GPU AMD haut de gamme (RX 6800/6900 XT). (optionnel)
+* [ ] **Déploiement :** Clonage du système sur ma flotte de 4 Mac Pro 5.1 supplémentaires.
+* [ ] **Calcul Distribué :** Mise en réseau pour l'inférence partagée (Multi-GPU sur plusieurs nœuds).
+
+🛠️ État de la Flotte & Besoins (Scale-up)
+
+**La base matérielle du cluster est déjà sécurisée :**
+
+    Réseau : Switch dédié 1 Gbit.
+
+    Châssis : 5 x Mac Pro 5.1 (Bi-CPU).
+
+    Mémoire : 640 Go de RAM ECC au total (soit 128 Go par machine).
+
+**Pour finaliser l'homogénéité du cluster, les besoins restants sont :**
+
+    Calcul (CPU) : 8 processeurs Intel Xeon X5680 (3.33 GHz).
+
+        Objectif : Maximiser le débit de données vers le GPU et uniformiser les temps de traitement No-AVX.
+
+    Stockage : 4 SSD SATA de 1 To.
+
+        Objectif : Permettre le chargement rapide des modèles (Checkpoints) en local sur chaque nœud.
+
+    Graphisme (GPU) : 4 cartes PowerColor Radeon RX 6600 XT 8Go de VRAM.
+
+        Objectif : Standardiser le stack ROCm sur toute la flotte et valider le déploiement "Zero-Config" sans modification électrique (Pixlas Mod non requis pour ce modèle).
+
+---
+
 **📝 Notes de fin**
 
 **Architecture :** Conçu spécifiquement pour Mac Pro 5.1 (Dual Xeon Westmere / AMD RDNA 2).
