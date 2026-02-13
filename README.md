@@ -408,15 +408,15 @@ Ce projet n'est que la première étape. Voici le plan de vol pour transformer c
 * [ ] **Déploiement :** Clonage du système sur ma flotte de 4 Mac Pro 5.1 supplémentaires.
 * [ ] **Calcul Distribué :** Mise en réseau pour l'inférence partagée (Multi-GPU sur plusieurs nœuds).
 
-🛠️ État de la Flotte & Besoins (Scale-up)
+## 🛠️ État de la Flotte & Besoins (Scale-up)
 
-## 🟢 La base matérielle du cluster déjà sécurisée :
+**🟢 La base matérielle du cluster déjà sécurisée :
 
 Réseau : Switch dédié 1 Gbit.
 Châssis : 5 x Mac Pro 5.1 (Bi-CPU).
 Mémoire : 640 Go de RAM ECC au total (soit 128 Go par machine).
 
-## 🔴 Pour finaliser l'homogénéité du cluster, les besoins restants sont :
+**🔴 Pour finaliser l'homogénéité du cluster, les besoins restants sont :
 
 **Calcul (CPU) :** 8 processeurs Intel Xeon X5680 (3.33 GHz).
 **Objectif :** Maximiser le débit de données vers le GPU et uniformiser les temps de traitement No-AVX.
